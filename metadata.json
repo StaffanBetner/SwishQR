@@ -1,0 +1,6 @@
+{
+  "name": "Swish QR-generator",
+  "description": "Skapa färdiga QR-koder för Swish med anpassat belopp, meddelande och sparade mottagare i webbläsaren.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
