@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { Download, Copy, Check, Smartphone, Info, Share2 } from 'lucide-react';
+import { Download, Copy, Check, Smartphone, Info, Share2, Maximize2, X } from 'lucide-react';
 import { SwishPayloadResult, SwishFormData } from '../types';
 import { formatSwishNumber } from '../utils/swish';
 
@@ -13,15 +13,18 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showTechnical, setShowTechnical] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   // Generate QR Code with Swish Center Logo
   useEffect(() => {
     if (!payloadResult.isValid || !payloadResult.payload || !canvasRef.current) {
+      setQrDataUrl(null);
       return;
     }
 
     const canvas = canvasRef.current;
-    const size = 640; // High resolution for sharpness
+    const size = 800; // High resolution for razor-sharp rendering on Retina and large views
     canvas.width = size;
     canvas.height = size;
 
@@ -30,7 +33,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
       payloadResult.payload,
       {
         errorCorrectionLevel: 'Q', // Allows 25% logo coverage
-        margin: 2,
+        margin: 1, // Tight quiet zone so the QR modules fill the maximum available width
         width: size,
         color: {
           dark: '#0f172a', // deep slate
@@ -43,7 +46,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
           return;
         }
 
-        // Reset inline width/height injected by qrcode library that breaks mobile view
+        // Reset inline width/height injected by qrcode library so it fluidly scales to 100% of container width
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.maxWidth = '100%';
@@ -60,7 +63,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
         // White circular background behind logo
         ctx.save();
         ctx.beginPath();
-        ctx.arc(center, center, radius + 8, 0, 2 * Math.PI, false);
+        ctx.arc(center, center, radius + 10, 0, 2 * Math.PI, false);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
 
@@ -96,6 +99,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
         img.onload = () => {
           ctx.drawImage(img, center - radius, center - radius, logoSize, logoSize);
           ctx.restore();
+          setQrDataUrl(canvas.toDataURL('image/png'));
         };
       }
     );
@@ -149,11 +153,11 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
   };
 
   return (
-    <div id="qr-display-container" className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col items-center">
+    <div id="qr-display-container" className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 sm:p-6 flex flex-col items-center w-full">
       {/* Title & Status */}
-      <div className="w-full flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      <div className="w-full flex items-center justify-between pb-3 border-b border-slate-100 mb-3 sm:mb-4 gap-2">
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
             <span>Färdig QR-kod</span>
             {payloadResult.isValid && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -167,37 +171,64 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
         </div>
 
         {payloadResult.isValid && (
-          <button
-            id="open-swish-mobile-btn"
-            type="button"
-            onClick={() => {
-              window.location.href = payloadResult.appUri;
-            }}
-            className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition cursor-pointer"
-            title="Öppna direkt i Swish på mobilen"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            Öppna appen
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              id="expand-qr-btn"
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-medium transition cursor-pointer"
+              title="Förstora QR-kod (fullskärm)"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden sm:inline">Förstora</span>
+            </button>
+
+            <button
+              id="open-swish-mobile-btn"
+              type="button"
+              onClick={() => {
+                window.location.href = payloadResult.appUri;
+              }}
+              className="sm:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition cursor-pointer"
+              title="Öppna direkt i Swish på mobilen"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Öppna</span>
+            </button>
+          </div>
         )}
       </div>
 
-      {/* QR Canvas Card */}
-      <div className="relative w-full max-w-[260px] sm:max-w-[280px] aspect-square flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-200/80 p-2 sm:p-3 shadow-inner my-1 mx-auto overflow-hidden">
+      {/* QR Canvas Card - Fills 100% of available card width */}
+      <div
+        id="qr-canvas-wrapper"
+        onClick={() => payloadResult.isValid && setIsExpanded(true)}
+        className={`relative w-full aspect-square flex items-center justify-center bg-white rounded-2xl border border-slate-200 p-1 sm:p-2 shadow-xs my-1 mx-auto overflow-hidden transition-all ${
+          payloadResult.isValid ? 'cursor-pointer hover:border-blue-400 group ring-2 ring-transparent hover:ring-blue-100' : ''
+        }`}
+        title={payloadResult.isValid ? 'Klicka för att förstora' : undefined}
+      >
         {payloadResult.isValid ? (
-          <canvas
-            ref={canvasRef}
-            id="swish-qr-canvas"
-            className="w-full h-full max-w-full max-h-full object-contain rounded-xl bg-white block"
-            style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', display: 'block' }}
-          />
+          <>
+            <canvas
+              ref={canvasRef}
+              id="swish-qr-canvas"
+              className="w-full h-full max-w-full max-h-full object-contain rounded-xl bg-white block"
+              style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', display: 'block' }}
+            />
+            {/* Subtle tap/click hint */}
+            <div className="absolute bottom-2.5 right-2.5 bg-slate-900/70 hover:bg-slate-900/90 text-white rounded-lg px-2 py-1 opacity-0 sm:group-hover:opacity-100 transition-opacity backdrop-blur-xs text-[11px] flex items-center gap-1 pointer-events-none">
+              <Maximize2 className="w-3 h-3" />
+              <span>Förstora</span>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center text-center p-4 text-slate-400">
             <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-300">
               <Smartphone className="w-7 h-7" />
             </div>
             <p className="text-sm font-semibold text-slate-600">Fyll i uppgifter</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-[180px]">
+            <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
               Ange Swish- eller mobilnummer till vänster för att skapa din QR-kod.
             </p>
           </div>
@@ -206,7 +237,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
 
       {/* Summary Chips */}
       {payloadResult.isValid && (
-        <div className="w-full mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs text-slate-600">
+        <div className="w-full mt-3 sm:mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs text-slate-600">
           <div className="flex justify-between items-center">
             <span className="text-slate-400 font-medium">Mottagare:</span>
             <span className="font-semibold text-slate-800">
@@ -228,9 +259,9 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
           </div>
 
           {formData.message && (
-            <div className="flex justify-between items-start gap-2 pt-0.5 border-t border-slate-200/50">
+            <div className="flex justify-between items-start gap-2 pt-1 border-t border-slate-200/50">
               <span className="text-slate-400 font-medium shrink-0">Meddelande:</span>
-              <span className="font-semibold text-slate-800 text-right truncate max-w-[180px]">
+              <span className="font-semibold text-slate-800 text-right truncate max-w-[200px]">
                 "{formData.message}"
               </span>
             </div>
@@ -239,13 +270,13 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
       )}
 
       {/* Primary Action Button: Ladda ner bild */}
-      <div className="w-full mt-4">
+      <div className="w-full mt-3 sm:mt-4">
         <button
           id="download-qr-btn"
           type="button"
           onClick={handleDownload}
           disabled={!payloadResult.isValid}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 active:scale-[0.99] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 active:scale-[0.99] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
         >
           <Download className="w-4 h-4" />
           <span>Ladda ner bild (PNG)</span>
@@ -293,7 +324,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
 
       {/* Technical Payload Accordion */}
       {payloadResult.isValid && (
-        <div className="w-full mt-4 pt-3 border-t border-slate-100">
+        <div className="w-full mt-3 sm:mt-4 pt-3 border-t border-slate-100">
           <button
             id="toggle-technical-details"
             type="button"
@@ -329,6 +360,78 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ payloadResult, for
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Fullscreen / Enlarged QR Modal */}
+      {isExpanded && qrDataUrl && (
+        <div
+          id="qr-fullscreen-modal"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-2 sm:p-6"
+          onClick={() => setIsExpanded(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-3.5 sm:p-6 w-full max-w-[96vw] sm:max-w-md shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-150 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="w-full flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
+              <div className="min-w-0 pr-2">
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate">
+                  {formData.recipientName || 'Swish-betalning'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {formatSwishNumber(formData.payee)}
+                  {formData.amount && ` • ${formData.amount} kr`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsExpanded(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                title="Stäng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Large QR Code - Maximizes screen space */}
+            <div className="w-full aspect-square p-1 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-center">
+              <img
+                src={qrDataUrl}
+                alt="Förstorad Swish QR-kod"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {formData.message && (
+              <p className="mt-2.5 text-xs text-slate-600 font-medium text-center bg-slate-50 py-1.5 px-3 rounded-lg border border-slate-100 w-full">
+                Meddelande: "{formData.message}"
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="w-full mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Spara bild</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsExpanded(false)}
+                className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
+              >
+                Stäng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

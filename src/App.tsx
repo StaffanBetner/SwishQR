@@ -153,10 +153,10 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 overflow-x-hidden">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-2.5 sm:px-8 py-4 sm:py-8 overflow-x-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Form */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-5">
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-5">
             {/* Quick selector of real saved recipients */}
             {recipients.length > 0 && (
               <div className="pb-4 border-b border-slate-100">
